@@ -149,7 +149,8 @@ void Cadherin::gen_c(vector<vector<double>> &X, GCpara gc_para, vector<vector<ve
                 {
                     for (int l = 0; l < 2; l++)
                     {
-                        Sc[i][j][k][l] = sc[j][i][k][l];
+                        int posLeft = k - nnc[i][j];
+                        Sc[i][j][k][l] = sc[j][i][posLeft][l];
                     }
                 }
             }
@@ -345,7 +346,8 @@ void Cadherin::gen_c_init(vector<vector<double>> &X, GCpara gc_para, vector<vect
                 {
                     for (int l = 0; l < 2; l++)
                     {
-                        Sc[i][j][k][l] = sc[j][i][k][l];
+                        int posLeft = k - nnc[i][j];
+                        Sc[i][j][k][l] = sc[j][i][posLeft][l];
                     }
                 }
             }
