@@ -24,10 +24,10 @@ void redim12(double *v, int len_v, double (*V)[2]);
 int pre_count(int i, int j, vector<vector<int>> &nc, int N);
 void gen_init(int N, vector<vector<double>> &X, vector<vector<int>> &nc, vector<vector<vector<vector<double>>>> &Sc, double *cc_array);
 void Id_c(int nij, double *xi, double *xj, vector<vector<double>> &sij, double r, double L, vector<double> &Phi);
-void f_red(int nij, double alpha, double r, double lc, double nl, double *x, vector<vector<double>> &s, vector<vector<double>> &F);
-void f_blue(int nij, double alpha, double r, double lc, double *x, vector<vector<double>> &s, vector<vector<double>> &F);
-void f1_red(double alpha, double r, double lc, double nl, double *x, double *y, double *F);
-void f1_blue(double alpha, double r, double lc, double *x, double *y, double *F);
+void f_red(int nij, double alpha, double r, double lc, double Lc, double nl, double *x, vector<vector<double>> &s, vector<vector<double>> &F);
+void f_blue(int nij, double alpha, double r, double lc, double Lc, double *x, vector<vector<double>> &s, vector<vector<double>> &F);
+void f1_red(double alpha, double r, double lc, double Lc, double nl, double *x, double *y, double *F);
+void f1_blue(double alpha, double r, double lc, double Lc, double *x, double *y, double *F);
 double Id_b(double *xi, double *xj, double r, double lc);
 void g(double alpha, double alphaM, double r, double lc, double *x, double *y, double *B);
 int f_rhs(double t, N_Vector y, N_Vector ydot, void *user_data);
@@ -316,6 +316,7 @@ int main()
         {
             t0 = t2;
         }
+
         if (t0 == 100)
         {
             // no more attempt to form a new c/i-site
@@ -793,7 +794,7 @@ void Id_c(int nij, double *xi, double *xj, vector<vector<double>> &sij, double r
 }
 
 // -------------------------------------------------------------------------------
-void f_blue(int nij, double alpha, double r, double lc, double *x, vector<vector<double>> &s, vector<vector<double>> &F)
+void f_blue(int nij, double alpha, double r, double lc, double Lc, double *x, vector<vector<double>> &s, vector<vector<double>> &F)
 {
     for (int i = 0; i < nij; i++)
     {
@@ -810,7 +811,7 @@ void f_blue(int nij, double alpha, double r, double lc, double *x, vector<vector
             d += (x[l] - s[k][l]) * (x[l] - s[k][l]);
         }
         d = sqrt(d);
-        if (d > r + lc)
+        if (d > r + lc && d < r + Lc)
         { // only drag forces, no pushaway forces
             for (int l = 0; l < 2; l++)
             {
@@ -821,7 +822,7 @@ void f_blue(int nij, double alpha, double r, double lc, double *x, vector<vector
 }
 
 // -------------------------------------------------------------------------------
-void f_red(int nij, double alpha, double r, double lc, double nl, double *x, vector<vector<double>> &s, vector<vector<double>> &F)
+void f_red(int nij, double alpha, double r, double lc, double Lc, double nl, double *x, vector<vector<double>> &s, vector<vector<double>> &F)
 {
     for (int i = 0; i < nij; i++)
     {
@@ -840,14 +841,17 @@ void f_red(int nij, double alpha, double r, double lc, double nl, double *x, vec
         d = sqrt(d);
         if (x[0] >= s[k][0])
         { // if the cadherin is formed in the back
-            for (int l = 0; l < 2; l++)
+            if (d < r + Lc)
             {
-                F[k][l] = alpha * (d - nl * (r + lc)) * (x[l] - s[k][l]) / d;
+                for (int l = 0; l < 2; l++)
+                {
+                    F[k][l] = alpha * (d - nl * (r + lc)) * (x[l] - s[k][l]) / d;
+                }
             }
         }
         else if (x[0] < s[k][0])
         { // if the cadherin is formed in the front
-            if (d > r + lc)
+            if (d > r + lc && d < r + Lc)
             { // only drag forces, no pushaway forces
                 for (int l = 0; l < 2; l++)
                 {
@@ -859,7 +863,7 @@ void f_red(int nij, double alpha, double r, double lc, double nl, double *x, vec
 }
 
 // -------------------------------------------------------------------------------
-void f1_blue(double alpha, double r, double lc, double *x, double *y, double *F)
+void f1_blue(double alpha, double r, double lc, double Lc, double *x, double *y, double *F)
 {
     // force exerted by blue cell on the cadherin
     // the nij = 1 version of f_blue
@@ -873,7 +877,7 @@ void f1_blue(double alpha, double r, double lc, double *x, double *y, double *F)
         d += (x[l] - y[l]) * (x[l] - y[l]);
     }
     d = sqrt(d);
-    if (d > r + lc)
+    if (d > r + lc && d < r + Lc)
     {
         for (int l = 0; l < 2; l++)
         {
@@ -883,7 +887,7 @@ void f1_blue(double alpha, double r, double lc, double *x, double *y, double *F)
 }
 
 // -------------------------------------------------------------------------------
-void f1_red(double alpha, double r, double lc, double nl, double *x, double *y, double *F)
+void f1_red(double alpha, double r, double lc, double Lc, double nl, double *x, double *y, double *F)
 {
     // force exerted by red cell on the cadherin
     // the nij = 1 version of f_red
@@ -899,7 +903,7 @@ void f1_red(double alpha, double r, double lc, double nl, double *x, double *y, 
     d = sqrt(d);
     if (x[0] <= y[0])
     { // when the cadherin is ahead of the cell
-        if (d > r + lc)
+        if (d > r + lc && d < r + Lc)
         {
             for (int l = 0; l < 2; l++)
             {
@@ -909,9 +913,12 @@ void f1_red(double alpha, double r, double lc, double nl, double *x, double *y, 
     }
     else if (x[0] > y[0])
     { // when the cadherin is behind the cell
-        for (int l = 0; l < 2; l++)
+        if (d < r + Lc)
         {
-            F[l] = alpha * (d - nl * (r + lc)) * (x[l] - y[l]) / d;
+            for (int l = 0; l < 2; l++)
+            {
+                F[l] = alpha * (d - nl * (r + lc)) * (x[l] - y[l]) / d;
+            }
         }
     }
 }
@@ -1025,21 +1032,18 @@ int f_rhs(double t, N_Vector y, N_Vector ydot, void *user_data)
     double lc = mpara->lc;
     double Lc = mpara->Lc;
     double nl = mpara->nl;
-    // double li = mpara->li; double Li = mpara->Li;
     double alphaB = mpara->alphaB;
     double alphaS = mpara->alphaS;
     vector<double> AlphaM(3, 0);
     AlphaM = mpara->AlphaM;
     double mu = mpara->mu;
     double nu = mpara->nu;
-    vector<double> AlphaC(2, 0); // vector<double> AlphaI(2,0);
-    AlphaC = mpara->AlphaC;      // AlphaI = mpara->AlphaI;
+    vector<double> AlphaC(2, 0);
+    AlphaC = mpara->AlphaC;
     vector<int> LB(N, 0);
     LB = mpara->label;
     vector<vector<int>> nc(N, vector<int>(N, 0));
     nc = mpara->nc;
-    // vector<int> ni(N, 0); ni = mpara->ni;
-    // vector<vector<vector<double> > > Si(N, vector<vector<double> >(Ni, vector<double>(2, 0))); Si = mpara->Si;
 
     // copy current value y(t) N_Vector --> V(t) array
     int Tnc = pre_count(N - 1, N, nc, N); // total number of c-sites
@@ -1058,14 +1062,6 @@ int f_rhs(double t, N_Vector y, N_Vector ydot, void *user_data)
     }
     double rV[5000][2];
     redim12(V_array, (N + Tnc) * 2, rV);
-
-    // // reshape nc into matrix rnc
-    // vector<vector<int> > rnc(N, vector<int>(N, 0)); // int rnc[N][N];
-    // for (int i = 0; i < N; i++) {
-    //     for (int j = 0; j < N; j++) {
-    //         rnc[i][j] = nc[i * N + j];
-    //     }
-    // }
 
     // Mc encodes forces due to cell-cell connection (c-sites)
     vector<vector<vector<double>>> Mc(N, vector<vector<double>>(N, vector<double>(2, 0))); // double Mc[N][N][2];
@@ -1111,29 +1107,22 @@ int f_rhs(double t, N_Vector y, N_Vector ydot, void *user_data)
                     count += 1;
                 }
                 // the forces due to c-sites
-                vector<double> Phif_c(nc_ij, 0);
                 vector<vector<double>> Fc(nc_ij, vector<double>(2, 0));
-                Id_c(nc_ij, Vi, Vj, Sc, r, Lc, Phif_c);
                 // asymmetric membrane for red cells
                 if (LB[i] == 0 && LB[j] == 1)
                 {
-                    f_red(nc_ij, alphaC, r, lc, nl, Vi, Sc, Fc);
+                    f_red(nc_ij, alphaC, r, lc, Lc, nl, Vi, Sc, Fc);
                 }
                 else
                 {
-                    f_blue(nc_ij, alphaC, r, lc, Vi, Sc, Fc);
+                    f_blue(nc_ij, alphaC, r, lc, Lc, Vi, Sc, Fc);
                 }
-                double dot_Phi_F_c[2] = {0, 0};
                 for (int l = 0; l < 2; l++)
                 {
                     for (int k = 0; k < nc_ij; k++)
                     {
-                        dot_Phi_F_c[l] += Phif_c[k] * Fc[k][l];
+                        Mc[i][j][l] += Fc[k][l];
                     }
-                }
-                for (int l = 0; l < 2; l++)
-                {
-                    Mc[i][j][l] = dot_Phi_F_c[l];
                 }
             }
         }
@@ -1294,18 +1283,18 @@ int f_rhs(double t, N_Vector y, N_Vector ydot, void *user_data)
                 double Fj[2];
                 if (LB[i] == 0 && LB[j] == 1)
                 {
-                    f1_red(alphaC_1, r, lc, nl, Vi, Vk, Fi);
-                    f1_blue(alphaC_2, r, lc, Vj, Vk, Fj);
+                    f1_red(alphaC_1, r, lc, Lc, nl, Vi, Vk, Fi);
+                    f1_blue(alphaC_2, r, lc, Lc, Vj, Vk, Fj);
                 }
                 else if (LB[i] == 1 && LB[j] == 0)
                 {
-                    f1_blue(alphaC_1, r, lc, Vi, Vk, Fi);
-                    f1_red(alphaC_2, r, lc, nl, Vj, Vk, Fj);
+                    f1_blue(alphaC_1, r, lc, Lc, Vi, Vk, Fi);
+                    f1_red(alphaC_2, r, lc, Lc, nl, Vj, Vk, Fj);
                 }
                 else
                 {
-                    f1_blue(alphaC_1, r, lc, Vi, Vk, Fi);
-                    f1_blue(alphaC_2, r, lc, Vj, Vk, Fj);
+                    f1_blue(alphaC_1, r, lc, Lc, Vi, Vk, Fi);
+                    f1_blue(alphaC_2, r, lc, Lc, Vj, Vk, Fj);
                 }
                 // motion equation for this cadherin
                 for (int l = 0; l < 2; l++)
